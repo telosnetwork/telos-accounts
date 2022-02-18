@@ -13,8 +13,6 @@ else()
    set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 endif()
 
-include(ExternalProject)
-
 find_package(eosio.cdt)
 
 message(STATUS "Building eosio.contracts v${VERSION_FULL}")
@@ -45,35 +43,16 @@ else()
    set(TEST_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 endif()
 
-ExternalProject_Add(
-   contracts_project
-   SOURCE_DIR ${CMAKE_SOURCE_DIR}/contracts
-   BINARY_DIR ${CMAKE_BINARY_DIR}/contracts
-   CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake
-   UPDATE_COMMAND ""
-   PATCH_COMMAND ""
-   TEST_COMMAND ""
-   INSTALL_COMMAND ""
-   BUILD_ALWAYS 1
-)
+set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+add_contract(telos.free telos.free ${CMAKE_CURRENT_SOURCE_DIR}/src/telos.free.cpp)
 
-if (APPLE)
-   set(OPENSSL_ROOT "/usr/local/opt/openssl")
-elseif (UNIX)
-   set(OPENSSL_ROOT "/usr/include/openssl")
-endif()
-set(SECP256K1_ROOT "/usr/local")
+target_compile_options(telos.free.wasm PUBLIC -R${CMAKE_CURRENT_SOURCE_DIR}/resources)
+target_compile_options(telos.free.wasm PUBLIC -Wunknown-pragmas)
+target_include_directories(telos.free.wasm
+   PUBLIC
+   ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-string(REPLACE ";" "|" TEST_FRAMEWORK_PATH "${CMAKE_FRAMEWORK_PATH}")
-string(REPLACE ";" "|" TEST_MODULE_PATH "${CMAKE_MODULE_PATH}")
+set_target_properties(telos.free.wasm
+   PROPERTIES
+   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
-ExternalProject_Add(
-  contracts_unit_tests
-  LIST_SEPARATOR | # Use the alternate list separator
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${TEST_BUILD_TYPE} -DCMAKE_FRAMEWORK_PATH=${TEST_FRAMEWORK_PATH} -DCMAKE_MODULE_PATH=${TEST_MODULE_PATH} -DEOSIO_ROOT=${EOSIO_ROOT} -DLLVM_DIR=${LLVM_DIR}
-  SOURCE_DIR ${CMAKE_SOURCE_DIR}/tests
-  BINARY_DIR ${CMAKE_BINARY_DIR}/tests
-  BUILD_ALWAYS 1
-  TEST_COMMAND   ""
-  INSTALL_COMMAND ""
-)
